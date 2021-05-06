@@ -1,0 +1,12 @@
+{
+	"name": "@nuogz/poseidon",
+	"version": "3.0.1",
+	"description": "A type-based config library",
+	"author": "Nuogz",
+	"license": "LGPL-3.0-or-later",
+	"main": "index.js",
+	"devDependencies": {
+		"eslint": "^7.25.0"
+	},
+	"dependencies": {}
+}
