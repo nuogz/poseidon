@@ -5,5 +5,7 @@
 		"target": "esnext",
 		"experimentalDecorators": true,
 	},
-	"exclude": []
+	"exclude": [
+		"node_modules",
+	]
 }
