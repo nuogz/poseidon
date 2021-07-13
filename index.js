@@ -145,7 +145,6 @@ const saveConfig = function(type_, config, isBackup = false, pathBackup = this._
 	return this;
 };
 
-
 /**
  * #### 支持分类的只读配置系统，提供读写功能
  * @version 3.0.0-2021.03.12.01
@@ -156,75 +155,77 @@ const saveConfig = function(type_, config, isBackup = false, pathBackup = this._
  * @param {string} dir_ 配置文件夹所在的路径
  * - 默认为`PA.parse(require.main.filename).dir`
  * - 初始读取的配置
- * @returns {Proxy} Config，配置系统自身
  */
-const initConfig = function(types_ = '', dir_) {
-	let types;
-	if(typeof types_ == 'string') {
-		if(!types_) {
-			types = ['_'];
-		}
-		else {
-			types = types_.split(',');
-		}
-	}
-	else if(types_ instanceof Array) {
-		types = types_;
-	}
-	else {
-		throw TypeError(`参数[types]类型必须是string或Array。当前值：${typeof types_}，${types_}`);
-	}
-
-	let dir;
-	if(dir_ && typeof dir_ == 'string') {
-		dir = dir_;
-	}
-	else if(dir_ === null || dir_ === undefined) {
-		dir = PA.parse(require.main.filename).dir;
-	}
-	else {
-		throw TypeError(`参数[dir]类型必须是string或null或undefined。当前值：${typeof dir_}，${dir_}`);
-	}
-
-	const keys = ['load', 'read', 'save'];
-	const config = new Proxy(
-		{
-			__dir: dir,
-			__raws: {},
-			__configs: {},
-
-			load: loadConfig,
-			read: readConfig,
-			save: saveConfig,
-		},
-		{
-			get: (self, key) => {
-				if(key.startsWith('__') || keys.includes(key)) {
-					return self[key];
-				}
-
-				if(self.__configs._ && key in self.__configs._) {
-					return self.__configs._[key];
-				}
-				else if(key in self.__configs) {
-					return self.__configs[key];
-				}
-				else {
-					return self.load(key, true);
-				}
-			},
-			set: (self, key, value) => {
-				// 严格模式下抛出异常
-				if((function() { return !this; }())) {
-					throw Error(`不允许修改内存中的配置。键：${key}，当前值：${typeof value}，${value}`);
-				}
+const Poseidon = class Poseidon {
+	constructor(types_ = '', dir_) {
+		let types;
+		if(typeof types_ == 'string') {
+			if(!types_) {
+				types = ['_'];
+			}
+			else {
+				types = types_.split(',');
 			}
 		}
-	);
+		else if(types_ instanceof Array) {
+			types = types_;
+		}
+		else {
+			throw TypeError(`参数[types]类型必须是string或Array。当前值：${typeof types_}，${types_}`);
+		}
 
-	types.forEach(type => config.load(type));
+		let dir;
+		if(dir_ && typeof dir_ == 'string') {
+			dir = dir_;
+		}
+		else if(dir_ === null || dir_ === undefined) {
+			dir = PA.parse(require.main.filename).dir;
+		}
+		else {
+			throw TypeError(`参数[dir]类型必须是string或null或undefined。当前值：${typeof dir_}，${dir_}`);
+		}
 
-	return config;
+		const keys = ['load', 'read', 'save'];
+
+		const config = new Proxy(
+			{
+				__dir: dir,
+				__raws: {},
+				__configs: {},
+
+				load: loadConfig,
+				read: readConfig,
+				save: saveConfig,
+			},
+			{
+				get: (self, key) => {
+					if(key.startsWith('__') || keys.includes(key)) {
+						return self[key];
+					}
+
+					if(self.__configs._ && key in self.__configs._) {
+						return self.__configs._[key];
+					}
+					else if(key in self.__configs) {
+						return self.__configs[key];
+					}
+					else {
+						return self.load(key, true);
+					}
+				},
+				set: (self, key, value) => {
+					// 严格模式下抛出异常
+					if((function() { return !this; }())) {
+						throw Error(`不允许修改内存中的配置。键：${key}，当前值：${typeof value}，${value}`);
+					}
+				}
+			}
+		);
+
+		types.forEach(type => config.load(type));
+
+		return config;
+	}
 };
 
-module.exports = initConfig;
+module.exports = Poseidon;
