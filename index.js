@@ -147,16 +147,20 @@ const saveConfig = function(type_, config, isBackup = false, pathBackup = this._
 
 /**
  * #### 支持分类的只读配置系统，提供读写功能
- * @version 3.1.0-2021.07.13.01
- * @param {string|Array<string>} [types_ = ''] 初始化时读取的配置
- * - 默认为`''`
- * - 多个配置用`,`分割
- * - 留空或使用`_`为默认配置，即`config.json`。可在多配置留空，如`',server'`
- * @param {string} dir_ 配置文件夹所在的路径
- * - 默认为`PA.parse(require.main.filename).dir`
- * - 初始读取的配置
+ * @version 3.1.1-2021.07.13.02
+ * @class
  */
 const Poseidon = class Poseidon {
+	/**
+	 * @param {string|Array<string>} [types_ = ''] 初始化时读取的配置
+	 * - 默认为`''`
+	 * - 多个配置用`,`分割
+	 * - 留空或使用`_`为默认配置，即`config.json`。可在多配置留空，如`',server'`
+	 * @param {string} dir_ 配置文件夹所在的路径
+	 * - 默认为`PA.parse(require.main.filename).dir`
+	 * - 初始读取的配置
+	 * @returns {Proxy} 配置系统实例
+	 */
 	constructor(types_ = '', dir_) {
 		let types;
 		if(typeof types_ == 'string') {
