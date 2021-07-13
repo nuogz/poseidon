@@ -146,9 +146,12 @@ const saveConfig = function(type_, config, isBackup = false, pathBackup = this._
 };
 
 /**
- * #### 支持分类的只读配置系统，提供读写功能
- * @version 3.1.1-2021.07.13.02
+ * #### 配置系统（波塞冬）
+ * - 默认只读，禁止直接修改配置
+ * - JSON配置文件，支持读取同一目录下的分类存放。默认`config.json`，子配置`config.*.json`
+ * - 支持以完整配置为单位的热修改功能，而不是单独的配置修改
  * @class
+ * @version 3.1.2-2021.07.13.03
  */
 const Poseidon = class Poseidon {
 	/**
