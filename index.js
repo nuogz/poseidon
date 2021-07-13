@@ -147,7 +147,7 @@ const saveConfig = function(type_, config, isBackup = false, pathBackup = this._
 
 /**
  * #### 支持分类的只读配置系统，提供读写功能
- * @version 3.0.0-2021.03.12.01
+ * @version 3.1.0-2021.07.13.01
  * @param {string|Array<string>} [types_ = ''] 初始化时读取的配置
  * - 默认为`''`
  * - 多个配置用`,`分割
