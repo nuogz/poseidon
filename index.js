@@ -1,5 +1,5 @@
-const FS = require('fs');
-const PA = require('path');
+import { readdirSync, readFileSync, writeFileSync } from 'fs';
+import { parse as parsePath, resolve } from 'path';
 
 // 深度冻结对象
 const deepFreeze = function(object) {
@@ -21,7 +21,7 @@ const recurParsePathObject = function(object, dir) {
 
 	Object.entries(object).forEach(([key, value]) => {
 		if(typeof value == 'string') {
-			objectParsed[key] = PA.resolve(dir, value);
+			objectParsed[key] = resolve(dir, value);
 		}
 		else if(value && typeof value == 'object') {
 			objectParsed[key] = recurParsePathObject(value, dir);
@@ -40,7 +40,7 @@ const recurParsePath = function(object, dir) {
 			const keyParsed = key.replace(/^_/, '');
 
 			if(typeof value == 'string') {
-				object[keyParsed] = PA.resolve(dir, value);
+				object[keyParsed] = resolve(dir, value);
 			}
 			// key带有下划线前缀的对象，默认所有子值（包括递归的）都是路径，且子值的key不需要下划线前缀
 			else if(value && typeof value == 'object') {
@@ -77,7 +77,7 @@ const readConfig = function(type_, isParse = true) {
 
 	const typeFile = (typeParsed && typeParsed != '_') ? `.${typeParsed}` : '';
 
-	const textConfig = FS.readFileSync(PA.resolve(this.__dir, `config${typeFile}.json`));
+	const textConfig = readFileSync(resolve(this.__dir, `config${typeFile}.json`));
 
 	return isParse ? JSON.parse(textConfig) : textConfig;
 };
@@ -113,7 +113,7 @@ const loadConfig = function(type_, isSafe) {
  * 默认为`''`
  * 留空或使用`_`为默认配置
  * @param {any} config 需要保存的配置
- * - 可以是任意`FS.writeFile`支持的数据类型
+ * - 可以是任意`node.fs.writeFile`支持的数据类型
  * @param {boolean} [isBackup = false] 是否备份配置
  * - 默认为`false`
  * @param {string} [pathBackup = this.__dir] 备份配置的位置
@@ -134,13 +134,13 @@ const saveConfig = function(type_, config, isBackup = false, pathBackup = this._
 		const textConfigBackup = this.read(typeParsed, false);
 
 		const regexNameBackup = new RegExp(`^config${typeFile.replace('.', '\\.')}\\.(\\d)\\.backup\\.json$`);
-		const idsFile = FS.readdirSync(pathBackup)
+		const idsFile = readdirSync(pathBackup)
 			.map(name => (name.match(regexNameBackup) || [])[1]).filter(n => n);
 
-		FS.writeFileSync(PA.resolve(pathBackup, `config${typeFile}.${Math.max(0, ...idsFile) + 1}.backup.json`), textConfigBackup);
+		writeFileSync(resolve(pathBackup, `config${typeFile}.${Math.max(0, ...idsFile) + 1}.backup.json`), textConfigBackup);
 	}
 
-	FS.writeFileSync(PA.resolve(this.__dir, `config${typeFile}.json`), JSON.stringify(config, null, '\t'));
+	writeFileSync(resolve(this.__dir, `config${typeFile}.json`), JSON.stringify(config, null, '\t'));
 
 	return this;
 };
@@ -151,7 +151,7 @@ const saveConfig = function(type_, config, isBackup = false, pathBackup = this._
  * - JSON配置文件，支持读取同一目录下的分类存放。默认`config.json`，子配置`config.*.json`
  * - 支持以完整配置为单位的热修改功能，而不是单独的配置修改
  * @class
- * @version 3.1.2-2021.07.13.03
+ * @version 4.0.0-2021.08.13.01
  */
 const Poseidon = class Poseidon {
 	/**
@@ -186,7 +186,7 @@ const Poseidon = class Poseidon {
 			dir = dir_;
 		}
 		else if(dir_ === null || dir_ === undefined) {
-			dir = PA.parse(require.main.filename).dir;
+			dir = parsePath(require.main.filename).dir;
 		}
 		else {
 			throw TypeError(`参数[dir]类型必须是string或null或undefined。当前值：${typeof dir_}，${dir_}`);
@@ -235,4 +235,5 @@ const Poseidon = class Poseidon {
 	}
 };
 
-module.exports = Poseidon;
+
+export default Poseidon;

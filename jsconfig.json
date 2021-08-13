@@ -1,11 +1,12 @@
 {
 	"compilerOptions": {
-		"module": "commonJS",
+		"module": "esnext",
 		"moduleResolution": "node",
 		"target": "esnext",
 		"experimentalDecorators": true,
+		"strict": true,
 	},
 	"exclude": [
 		"node_modules",
-	]
+	],
 }
