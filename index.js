@@ -66,10 +66,16 @@ const recurParsePath = function(object, dir) {
  * - `false`，返回`Buffer`
  * @returns {any|Buffer} 无处理的配置数据或Buffer
  */
-const readConfig = function(type_, isParse = true) {
+const read = function(type_, isParse = true) {
 	let typeParsed;
+	let isHide = false;
 	if(typeof type_ == 'string') {
 		typeParsed = type_.trim();
+
+		if(typeParsed.startsWith('$')) {
+			typeParsed = typeParsed.replace('$', '');
+			isHide = true;
+		}
 	}
 	else {
 		throw TypeError(`参数[dir]类型必须是string。当前值：${typeof type_}，${type_}`);
@@ -77,7 +83,7 @@ const readConfig = function(type_, isParse = true) {
 
 	const typeFile = (typeParsed && typeParsed != '_') ? `.${typeParsed}` : '';
 
-	const textConfig = readFileSync(resolve(this.__dir, `config${typeFile}.json`));
+	const textConfig = readFileSync(resolve(this.__dir, `${isHide ? '.' : ''}config${typeFile}.json`));
 
 	return isParse ? JSON.parse(textConfig) : textConfig;
 };
@@ -87,7 +93,7 @@ const readConfig = function(type_, isParse = true) {
  * - 留空或使用`_`为默认配置
  * @returns {any} 对应配置类型的配置数据
  */
-const loadConfig = function(type_, isSafe) {
+const load = function(type_, isSafe) {
 	let typeParsed;
 	if(typeof type_ == 'string') {
 		typeParsed = type_.trim();
@@ -119,10 +125,16 @@ const loadConfig = function(type_, isSafe) {
  * @param {string} [pathBackup = this.__dir] 备份配置的位置
  * - 默认为`Config.__dir`，`配置文件`的同一文件夹
  */
-const saveConfig = function(type_, config, isBackup = false, pathBackup = this.__dir) {
+const save = function(type_, config, isBackup = false, pathBackup = this.__dir) {
 	let typeParsed;
+	let isHide = false;
 	if(typeof type_ == 'string') {
 		typeParsed = type_.trim();
+
+		if(typeParsed.startsWith('$')) {
+			typeParsed = typeParsed.replace('$', '');
+			isHide = true;
+		}
 	}
 	else {
 		throw TypeError(`参数[dir]类型必须是string。当前值：${typeof type_}，${type_}`);
@@ -131,16 +143,16 @@ const saveConfig = function(type_, config, isBackup = false, pathBackup = this._
 	const typeFile = (typeParsed && typeParsed != '_') ? `.${typeParsed}` : '';
 
 	if(isBackup) {
-		const textConfigBackup = this.read(typeParsed, false);
+		const textConfigBackup = this.read(typeParsed, false, isHide);
 
-		const regexNameBackup = new RegExp(`^config${typeFile.replace('.', '\\.')}\\.(\\d)\\.backup\\.json$`);
+		const regexNameBackup = new RegExp(`^${isHide ? '\\.' : ''}config${typeFile.replace('.', '\\.')}\\.(\\d)\\.backup\\.json$`);
 		const idsFile = readdirSync(pathBackup)
 			.map(name => (name.match(regexNameBackup) || [])[1]).filter(n => n);
 
-		writeFileSync(resolve(pathBackup, `config${typeFile}.${Math.max(0, ...idsFile) + 1}.backup.json`), textConfigBackup);
+		writeFileSync(resolve(pathBackup, `${isHide ? '.' : ''}config${typeFile}.${Math.max(0, ...idsFile) + 1}.backup.json`), textConfigBackup);
 	}
 
-	writeFileSync(resolve(this.__dir, `config${typeFile}.json`), JSON.stringify(config, null, '\t'));
+	writeFileSync(resolve(this.__dir, `${isHide ? '.' : ''}config${typeFile}.json`), JSON.stringify(config, null, '\t'));
 
 	return this;
 };
@@ -151,7 +163,7 @@ const saveConfig = function(type_, config, isBackup = false, pathBackup = this._
  * - JSON配置文件，支持读取同一目录下的分类存放。默认`config.json`，子配置`config.*.json`
  * - 支持以完整配置为单位的热修改功能，而不是单独的配置修改
  * @class
- * @version 4.0.0-2021.08.13.01
+ * @version 4.1.0-2021.08.23.01
  */
 const Poseidon = class Poseidon {
 	/**
@@ -200,9 +212,9 @@ const Poseidon = class Poseidon {
 				__raws: {},
 				__configs: {},
 
-				load: loadConfig,
-				read: readConfig,
-				save: saveConfig,
+				load,
+				read,
+				save,
 			},
 			{
 				get: (self, key) => {
