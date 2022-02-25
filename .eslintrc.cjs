@@ -1,34 +1,22 @@
-const rc = {
-	env: {
-		es2021: true,
-		node: true,
-	},
-	extends: [
-		'eslint:recommended',
-	],
-	parserOptions: {
-		sourceType: 'module'
-	},
+const rcNode = {
+	root: true,
+	env: { es2022: true, node: true },
+	extends: ['eslint:recommended'],
+	parserOptions: { sourceType: 'module' },
 	rules: {
 		indent: [2, 'tab', { ignoreComments: true, SwitchCase: 1 }],
 		linebreakStyle: [2, 'unix'],
 		quotes: [2, 'single', { allowTemplateLiterals: true }],
-		semi: [2, 'always'],
-		noUnusedVars: [2, { vars: 'all', args: 'after-used' }],
-		noConsole: [2],
+		semi: [2],
+		noUnusedVars: [2, { vars: 'all', args: 'none' }],
 		noVar: [2],
-		quoteProps: [2, 'as-needed'],
-		requireAtomicUpdates: [0],
+		noConsole: [2, { allow: ['log', 'warn', 'error'] }],
 	},
 };
 
-for(const key in rc.rules) {
-	const keyCamel = key.split(/(?=[A-Z])/).join('-').toLowerCase();
-	if(keyCamel != key) {
-		rc.rules[keyCamel] = rc.rules[key];
 
-		delete rc.rules[key];
-	}
-}
+const parseKey = (raw, target) => { const key = raw.split(/(?=[A-Z])/).join('-').toLowerCase(); if(key != raw) { target[key] = target[raw]; delete target[raw]; } };
+Object.keys(rcNode.rules).forEach((key) => parseKey(key, rcNode.rules));
 
-module.exports = rc;
+
+module.exports = rcNode;
