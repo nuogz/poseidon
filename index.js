@@ -58,38 +58,55 @@ const absolutizePath = (config, dir) => {
 	return config;
 };
 
-/** 递归相对路径绝对化 */
+/**
+ * 解析指定配置类型的参数
+ * @param {string} type
+ * @param {boolean} [isParseHidden = true]
+ * @returns
+ */
 const parseType = (type, isParseHidden = true) => {
-	let typeParsed;
-	let isHide = false;
+	if(typeof type != 'string') { throw TypeError(`参数~[type]类型必须是非空的string。当前值：${typeof type}，${type}`); }
 
 
-	if(typeof type == 'string') {
-		typeParsed = type.trim();
-
-		if(typeParsed.startsWith('$') && isParseHidden) {
-			typeParsed = typeParsed.replace('$', '');
-			isHide = true;
-		}
-	}
-	else {
-		throw TypeError(`参数~[type]类型必须是string。当前值：${typeof type}，${type}`);
-	}
+	let slot = type.trim();
 
 
-	return { typeParsed, isHide };
+	const isHidden = slot.startsWith('.') && isParseHidden;
+
+	if(isHidden) { slot = slot.replace('.', ''); }
+
+
+	return {
+		slot,
+		symbolHidden: isHidden ? '.' : null,
+		isDefault: slot == '_'
+	};
 };
 
 
 /**
  * #### 配置系统（波塞冬）
- * - 默认只读，禁止直接修改配置
- * - JSON配置文件，支持读取同一目录下的分类存放。默认`config.json`，子配置`config.*.json`
- * - 支持以完整配置为单位的热修改功能，而不是单独的配置修改
+ * - 已加载的配置均为只读，无法直接修改配置
+ * - 以JSON文件作为一个配置单位，支持读取同一目录下的分类存放。默认配置`config.json`，分类配置`config.*.json`
+ * - 默认配置没有分类，`_`为默认配置的保留配置名
+ * - 支持以整个配置为单位的热修改功能
  * @class
- * @version 5.1.0-2022.03.25.01
+ * @version 5.2.0-2022.03.25.02
  */
 const Poseidon = class Poseidon {
+		/**
+	 * 配置文件名前缀
+	 * @type {string}
+	 */
+		 prefixFile = 'config';
+
+		 /**
+		  * 配置文件名前缀分隔符
+		  * @type {string}
+		  */
+		 sepPrefix = '.';
+
+
 	/**
 	 * 配置文件夹所在的路径
 	 * @type {string}
@@ -110,39 +127,42 @@ const Poseidon = class Poseidon {
 
 
 
-	/** 读取配置文件，不做任何处理
-	 * @param {string} type_ 配置类型
-	 * - 默认为`''`
-	 * - 留空或使用`_`为默认配置
-	 * @param {boolean} [isParse = true] 是否解析数据
-	 * - 默认为`true`
-	 * - `true`，返回使用`JSON.parse`解析的数据
-	 * - `false`，返回`Buffer`
-	 * @returns {any|Buffer} 无处理的配置数据或Buffer
+	/** 读取配置文件的原始数据，不做任何处理或仅`JSON.parse`
+	 * @param {string} type 配置类型
+	 * @param {boolean} [willParseJSON = true] `false`，是否解析为JSON数据
+	 * @returns {any|Buffer} 原始的JSON数据或buffer
 	 */
-	__read(type_, isParse = true) {
-		const { typeParsed, isHide } = parseType(type_);
+	 __read(type, willParseJSON = true) {
+		const { slot, symbolHidden, isDefault } = parseType(type);
 
-		const typeFile = (typeParsed && typeParsed != '_') ? `.${typeParsed}` : '';
 
-		const textConfig = readFileSync(resolve(this.__dir, `${isHide ? '.' : ''}config${typeFile}.json`));
+		const nameFile =
+			symbolHidden +
+			this.prefixFile +
+			(isDefault ? `${this.sepPrefix}${slot}` : '') +
+			'.json';
 
-		return isParse ? JSON.parse(textConfig) : textConfig;
+		const textConfig = readFileSync(resolve(this.__dir, nameFile));
+
+
+		return willParseJSON ?
+			JSON.parse(textConfig) :
+			textConfig;
 	}
 
 
-	/** 手动加载配置到`Config`。配置会被冻结且进行路径绝对化，重复执行可覆盖现有配置
-	 * @param {string} type 配置类型
-	 * - 默认为`''`
-	 * - 留空或使用`_`为默认配置
+	/** 加载一个配置单位。配置的所有值（递归的）会被冻结，且其中的文件路径值会被转换为绝对路径。可重复加载
+	 * @param {string} [type = ''] `''`，配置类型
+	 * @param {boolean} [isSafeLoad = false] 加载错误时是否抛出异常
 	 * @returns {any} 对应配置类型的配置数据
 	 */
 	__load(type, isSafeLoad = false) {
-		const { typeParsed } = parseType(type, false);
+		const { slot } = parseType(type, false);
+
 
 		try {
-			const raw = this.__raws[typeParsed || '_'] = this.__read(typeParsed, false);
-			const config = this.__configs[typeParsed || '_'] = JSON.parse(raw);
+			const raw = this.__raws[slot] = this.__read(slot, false);
+			const config = this.__configs[slot] = JSON.parse(raw);
 
 			return config && typeof config != 'object' ?
 			deepFreeze(absolutizePath(config, this.__dir)) :
@@ -159,7 +179,7 @@ const Poseidon = class Poseidon {
 	/** 保存`配置文件`
 	 * @param {string} type_ 配置类型
 	 * 默认为`''`
-	 * 留空或使用`_`为默认配置
+	 * 使用`_`为默认配置
 	 * @param {any} config 需要保存的配置
 	 * - 可以是任意`node.fs.writeFile`支持的数据类型
 	 * @param {boolean} [isBackup = false] 是否备份配置
@@ -234,9 +254,9 @@ const Poseidon = class Poseidon {
 
 	/**
 	 * @param {string|Array<string>} [types_ = ''] 初始化时读取的配置
-	 * - 默认为`''`
+	 * - 默认为`''`，不预加载任何配置
 	 * - 多个配置用`,`分割
-	 * - 留空或使用`_`为默认配置，即`config.json`。可在多配置留空，如`',server'`
+	 * - 使用`_`为默认配置，即`config.json`。可在多配置留空，如`',server'`
 	 * @param {string} dir_ 配置文件夹所在的路径
 	 * - 默认为`PA.parse(require.main.filename).dir`
 	 * - 初始读取的配置
@@ -246,7 +266,7 @@ const Poseidon = class Poseidon {
 		let types;
 		if(typeof types_ == 'string') {
 			if(!types_) {
-				types = ['_'];
+				types = [];
 			}
 			else {
 				types = types_.split(',');
