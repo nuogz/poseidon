@@ -18,7 +18,7 @@ const deepFreeze = object => {
 };
 
 /** 针对Object的递归相对路径绝对化 */
-const recurParsePathObject = (object, dir) => {
+const absolutizePathObject = (object, dir) => {
 	const objectParsed = {};
 
 	Object.entries(object).forEach(([key, value]) => {
@@ -26,7 +26,7 @@ const recurParsePathObject = (object, dir) => {
 			objectParsed[key] = resolve(dir, value);
 		}
 		else if(value && typeof value == 'object') {
-			objectParsed[key] = recurParsePathObject(value, dir);
+			objectParsed[key] = absolutizePathObject(value, dir);
 		}
 		else {
 			objectParsed[key] = value;
@@ -37,35 +37,35 @@ const recurParsePathObject = (object, dir) => {
 };
 
 /** 递归相对路径绝对化 */
-const recurParsePath = (object, dir) => {
-	Object.entries(object).forEach(([key, value]) => {
+const absolutizePath = (config, dir) => {
+	Object.entries(config).forEach(([key, value]) => {
 		if(key.startsWith('_')) {
 			const keyParsed = key.replace(/^_/, '');
 
 			if(typeof value == 'string') {
-				object[keyParsed] = resolve(dir, value);
+				config[keyParsed] = resolve(dir, value);
 			}
-			// key带有下划线前缀的对象，默认所有子值（包括递归的）都是路径，且子值的key不需要下划线前缀
+			// 若值是对象，且key以下划线作为前缀，则该对象所有子值（包括递归的）均视为路径
 			else if(value && typeof value == 'object') {
-				object[keyParsed] = recurParsePathObject(value, dir);
+				config[keyParsed] = absolutizePathObject(value, dir);
 			}
 		}
 		else if(value && typeof value == 'object') {
-			recurParsePath(value, dir);
+			absolutizePath(value, dir);
 		}
 	});
 
-	return object;
+	return config;
 };
 
 /** 递归相对路径绝对化 */
-const parseType = (type_, isParseHidden = true) => {
+const parseType = (type, isParseHidden = true) => {
 	let typeParsed;
 	let isHide = false;
 
 
-	if(typeof type_ == 'string') {
-		typeParsed = type_.trim();
+	if(typeof type == 'string') {
+		typeParsed = type.trim();
 
 		if(typeParsed.startsWith('$') && isParseHidden) {
 			typeParsed = typeParsed.replace('$', '');
@@ -73,7 +73,7 @@ const parseType = (type_, isParseHidden = true) => {
 		}
 	}
 	else {
-		throw TypeError(`参数~[type]类型必须是string。当前值：${typeof type_}，${type_}`);
+		throw TypeError(`参数~[type]类型必须是string。当前值：${typeof type}，${type}`);
 	}
 
 
@@ -87,9 +87,29 @@ const parseType = (type_, isParseHidden = true) => {
  * - JSON配置文件，支持读取同一目录下的分类存放。默认`config.json`，子配置`config.*.json`
  * - 支持以完整配置为单位的热修改功能，而不是单独的配置修改
  * @class
- * @version 5.0.0-2022.02.25.01
+ * @version 5.1.0-2022.03.25.01
  */
 const Poseidon = class Poseidon {
+	/**
+	 * 配置文件夹所在的路径
+	 * @type {string}
+	 */
+	 __dir;
+
+	 /**
+	  * 已加载配置的原始数据
+	  * @type {Object.<string, Buffer>}
+	  */
+	 __raws = {};
+
+	 /**
+	  * 原始配置
+	  * @type {Object.<string, any>}
+	  */
+	 __configs = {};
+
+
+
 	/** 读取配置文件，不做任何处理
 	 * @param {string} type_ 配置类型
 	 * - 默认为`''`
@@ -112,22 +132,24 @@ const Poseidon = class Poseidon {
 
 
 	/** 手动加载配置到`Config`。配置会被冻结且进行路径绝对化，重复执行可覆盖现有配置
-	 * @param {string} type_ 配置类型
+	 * @param {string} type 配置类型
 	 * - 默认为`''`
 	 * - 留空或使用`_`为默认配置
 	 * @returns {any} 对应配置类型的配置数据
 	 */
-	__load(type_, isSafe) {
-		const { typeParsed } = parseType(type_, false);
+	__load(type, isSafeLoad = false) {
+		const { typeParsed } = parseType(type, false);
 
 		try {
 			const raw = this.__raws[typeParsed || '_'] = this.__read(typeParsed, false);
 			const config = this.__configs[typeParsed || '_'] = JSON.parse(raw);
 
-			return deepFreeze(recurParsePath(config, this.__dir));
+			return config && typeof config != 'object' ?
+			deepFreeze(absolutizePath(config, this.__dir)) :
+			config;
 		}
 		catch(error) {
-			if(isSafe) { return undefined; }
+			if(isSafeLoad) { return undefined; }
 
 			throw error;
 		}
@@ -178,39 +200,36 @@ const Poseidon = class Poseidon {
 	 * @param {string} type_ 配置类型
 	 * - 默认为`''`
 	 * - 留空或使用`_`为默认配置
-	 * @param {callbackEdit} functionEdit 配置类型
+	 * @param {callbackEdit} functionEdit 配置类型，支持Promise
 	 * @returns {Poseidon} 该配置系统实例
 	 */
-	__edit(type_, functionEdit) {
+	 __edit(type_, functionEdit) {
 		const config = this.__read(type_);
 
-		functionEdit(config, type_, this);
+		const raw = functionEdit(config, type_, this);
 
-		this.__save(type_, config);
-		this.__load(type_);
+		if(raw instanceof Promise) {
+			return raw.then(configNew => {
+				const configFinal = raw === undefined ? config : configNew;
 
+				this.__save(type_, configFinal);
+				this.__load(type_);
 
-		return this;
+				return this;
+			});
+		}
+		else {
+			const configFinal = raw === undefined ? config : raw;
+
+			this.__save(type_, configFinal);
+			this.__load(type_);
+
+			return this;
+		}
 	}
 
 
-	/**
-	 * 配置文件夹所在的路径
-	 * @type {string}
-	 */
-	__dir;
 
-	/**
-	 * 已加载配置的原始数据
-	 * @type {Object.<string, Buffer>}
-	 */
-	__raws = {};
-
-	/**
-	 * 原始配置
-	 * @type {Object}
-	 */
-	__configs = {};
 
 
 	/**
