@@ -1,0 +1,20 @@
+{
+	"version": "0.2.0",
+	"configurations": [
+		{
+			"type": "pwa-node",
+			"request": "launch",
+			"name": "Test Current File",
+			"console": "integratedTerminal",
+			"runtimeExecutable": "node.exe",
+			"skipFiles": [
+				"<node_internals>/**"
+			],
+			"cwd": "${fileDirname}",
+			"program": "${fileBasename}",
+			"args": [
+				"${workspaceRoot}"
+			],
+		},
+	]
+}

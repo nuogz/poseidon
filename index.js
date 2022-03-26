@@ -1,5 +1,8 @@
 import { readdirSync, readFileSync, writeFileSync } from 'fs';
-import { parse as parsePath, resolve } from 'path';
+import { resolve } from 'path';
+
+
+import EscapeStringRegexp from 'escape-string-regexp';
 
 
 /** 深度冻结对象 */
@@ -58,30 +61,63 @@ const absolutizePath = (config, dir) => {
 	return config;
 };
 
-/**
- * 解析指定配置类型的参数
- * @param {string} type
- * @param {boolean} [isParseHidden = true]
- * @returns
- */
-const parseType = (type, isParseHidden = true) => {
-	if(typeof type != 'string') { throw TypeError(`参数~[type]类型必须是非空的string。当前值：${typeof type}，${type}`); }
+/** 配置类型信息 */
+class TypeInfo {
+	/**
+	 * 解析指定配置类型的参数
+	 * @param {string} type
+	 * @param {boolean} [isParseHidden = true]
+	 * @returns {TypeInfo} 配置类型信息
+	 */
+	static parse(type, isParseHidden = true) {
+		if(type instanceof TypeInfo) { return type; }
 
 
-	let slot = type.trim();
+		let slot;
+
+		if(typeof type != 'string' || !(slot = type.trim())) {
+			throw TypeError(`参数~[type]类型必须是非空的string。当前类型~[${typeof type}] (~{${type}})`);
+		}
 
 
-	const isHidden = slot.startsWith('.') && isParseHidden;
+		const isHidden = slot.startsWith('.') && isParseHidden;
 
-	if(isHidden) { slot = slot.replace('.', ''); }
+		if(isHidden) { slot = slot.replace('.', ''); }
 
 
-	return {
-		slot,
-		symbolHidden: isHidden ? '.' : null,
-		isDefault: slot == '_'
-	};
-};
+		return new TypeInfo(
+			slot,
+			isHidden ? '.' : '',
+			slot == '_'
+		);
+	}
+
+
+	/**
+	 * 配置类型名称
+	 * @type {string}
+	 */
+	slot;
+	/**
+	 * 隐藏配置符号（如果配置是隐藏的话）
+	 * @type {string}
+	 */
+	symbolHidden;
+	/**
+	 * 指示该类型是否默认配置
+	 * @type {boolean}
+	 */
+	isDefault;
+
+	constructor(slot, symbolHidden, isDefault) {
+		this.slot = slot;
+		this.symbolHidden = symbolHidden;
+		this.isDefault = isDefault;
+	}
+}
+
+
+
 
 
 /**
@@ -89,84 +125,97 @@ const parseType = (type, isParseHidden = true) => {
  * - 已加载的配置均为只读，无法直接修改配置
  * - 以JSON文件作为一个配置单位，支持读取同一目录下的分类存放。默认配置`config.json`，分类配置`config.*.json`
  * - 默认配置没有分类，`_`为默认配置的保留配置名
+ * - `'$'`同样也是保留类型，用于返回Poseidon实例
  * - 支持以整个配置为单位的热修改功能
  * @class
- * @version 5.2.0-2022.03.25.02
+ * @version 6.0.0-2022.03.26.01
  */
-const Poseidon = class Poseidon {
-		/**
+class Poseidon {
+	static TypeInfo = TypeInfo;
+
+
+	/**
+	 * 实例自身
+	 * @type {Poseidon}
+	 */
+	$ = this;
+
+	/**
 	 * 配置文件名前缀
 	 * @type {string}
 	 */
-		 prefixFile = 'config';
+	prefixFile = 'config';
 
-		 /**
-		  * 配置文件名前缀分隔符
-		  * @type {string}
-		  */
-		 sepPrefix = '.';
+	/**
+	 * 配置文件名前缀分隔符
+	 * @type {string}
+	 */
+	sepPrefix = '.';
 
 
 	/**
 	 * 配置文件夹所在的路径
 	 * @type {string}
 	 */
-	 __dir;
+	dirConfig;
 
-	 /**
-	  * 已加载配置的原始数据
-	  * @type {Object.<string, Buffer>}
-	  */
-	 __raws = {};
+	/**
+	 * 已加载配置的原始buffer数据
+	 * @type {Object.<string, Buffer>}
+	 */
+	buffers = {};
 
-	 /**
-	  * 原始配置
-	  * @type {Object.<string, any>}
-	  */
-	 __configs = {};
+	/**
+	 * 已加载的JSON配置
+	 * @type {Object.<string, any>}
+	 */
+	configs = {};
 
 
 
-	/** 读取配置文件的原始数据，不做任何处理或仅`JSON.parse`
-	 * @param {string} type 配置类型
+	/**
+	 * 读取一个配置文件的原始数据，不做任何处理或仅`JSON.parse`
+	 * @param {string|TypeInfo} type 配置类型
 	 * @param {boolean} [willParseJSON = true] `false`，是否解析为JSON数据
 	 * @returns {any|Buffer} 原始的JSON数据或buffer
 	 */
-	 __read(type, willParseJSON = true) {
-		const { slot, symbolHidden, isDefault } = parseType(type);
+	read(type, willParseJSON = true) {
+		const { slot, symbolHidden, isDefault } = TypeInfo.parse(type);
 
 
 		const nameFile =
 			symbolHidden +
 			this.prefixFile +
-			(isDefault ? `${this.sepPrefix}${slot}` : '') +
+			(isDefault ? '' : `${this.sepPrefix}${slot}`) +
 			'.json';
 
-		const textConfig = readFileSync(resolve(this.__dir, nameFile));
+		const bufferConfig = readFileSync(resolve(this.dirConfig, nameFile));
 
 
 		return willParseJSON ?
-			JSON.parse(textConfig) :
-			textConfig;
+			JSON.parse(bufferConfig) :
+			bufferConfig;
 	}
 
 
-	/** 加载一个配置单位。配置的所有值（递归的）会被冻结，且其中的文件路径值会被转换为绝对路径。可重复加载
-	 * @param {string} [type = ''] `''`，配置类型
+	/**
+	 * 加载一个配置文件。配置的所有值（递归的）会被冻结，且其中的文件路径值会被转换为绝对路径。可重复加载
+	 * @param {string|TypeInfo} type 配置类型
 	 * @param {boolean} [isSafeLoad = false] 加载错误时是否抛出异常
 	 * @returns {any} 对应配置类型的配置数据
 	 */
-	__load(type, isSafeLoad = false) {
-		const { slot } = parseType(type, false);
+	load(type, isSafeLoad = false) {
+		const { slot } = TypeInfo.parse(type);
 
 
 		try {
-			const raw = this.__raws[slot] = this.__read(slot, false);
-			const config = this.__configs[slot] = JSON.parse(raw);
+			const buffer = this.buffers[slot] = this.read(type, false);
+			const config = this.configs[slot] = JSON.parse(buffer);
+
 
 			return config && typeof config != 'object' ?
-			deepFreeze(absolutizePath(config, this.__dir)) :
-			config;
+				deepFreeze(absolutizePath(config, this.dirConfig)) :
+				config;
 		}
 		catch(error) {
 			if(isSafeLoad) { return undefined; }
@@ -176,34 +225,38 @@ const Poseidon = class Poseidon {
 	}
 
 
-	/** 保存`配置文件`
-	 * @param {string} type_ 配置类型
-	 * 默认为`''`
-	 * 使用`_`为默认配置
-	 * @param {any} config 需要保存的配置
-	 * - 可以是任意`node.fs.writeFile`支持的数据类型
-	 * @param {boolean} [isBackup = false] 是否备份配置
-	 * - 默认为`false`
-	 * @param {string} [pathBackup = this.__dir] 备份配置的位置
-	 * - 默认为`Config.__dir`，`配置文件`的同一文件夹
+	/**
+	 * 保存一个配置文件，支持保存前备份文件
+	 * @param {string|TypeInfo} type 配置类型
+	 * @param {any} config 需要保存的配置，任意`fs.writeFile`支持的类型
+	 * @param {boolean} [willBackup = false] `false`，是否备份配置
+	 * @param {string} [dirBackup = this.dirConfig] 备份配置的位置
 	 * @returns {Poseidon} 该配置系统实例
 	 */
-	__save(type_, config, isBackup = false, pathBackup = this.__dir) {
-		const { typeParsed, isHide } = parseType(type_);
+	save(type, config, willBackup = false, dirBackup = this.dirConfig) {
+		const { slot, symbolHidden, isDefault } = TypeInfo.parse(type);
 
-		const typeFile = (typeParsed && typeParsed != '_') ? `.${typeParsed}` : '';
+		const nameFile =
+			symbolHidden +
+			this.prefixFile +
+			(isDefault ? '' : `${this.sepPrefix}${slot}`);
 
-		if(isBackup) {
-			const textConfigBackup = this.__read(typeParsed, false, isHide);
 
-			const regexNameBackup = new RegExp(`^${isHide ? '\\.' : ''}config${typeFile.replace('.', '\\.')}\\.(\\d)\\.backup\\.json$`);
-			const idsFile = readdirSync(pathBackup)
-				.map(name => (name.match(regexNameBackup) || [])[1]).filter(n => n);
+		if(willBackup) {
+			const regexBackup = new RegExp(`^${EscapeStringRegexp(nameFile)}\\.(\\d)\\.backup\\.json$`);
+			const idsBackup = readdirSync(dirBackup)
+				.map(name => (name.match(regexBackup) || [])[1]).filter(n => n);
+			const idBackupMax = Math.max(0, ...idsBackup) + 1;
 
-			writeFileSync(resolve(pathBackup, `${isHide ? '.' : ''}config${typeFile}.${Math.max(0, ...idsFile) + 1}.backup.json`), textConfigBackup);
+			writeFileSync(
+				resolve(dirBackup, `${nameFile}.${idBackupMax}.backup.json`),
+				this.read(type, false)
+			);
 		}
 
-		writeFileSync(resolve(this.__dir, `${isHide ? '.' : ''}config${typeFile}.json`), JSON.stringify(config, null, '\t'));
+
+		writeFileSync(resolve(this.dirConfig, `${nameFile}.json`), JSON.stringify(config, null, '\t'));
+
 
 		return this;
 	}
@@ -211,108 +264,77 @@ const Poseidon = class Poseidon {
 
 	/**
 	 * 用于应用修改的回调参数
-	 * @callback callbackEdit
+	 * @callback CallbackEdit
 	 * @param {any} configLoaded 对应的原始配置
 	 * @param {string} typeConfig 配置类型
 	 * @param {Poseidon} self 该配置系统实例
 	 */
 	/** 修改并保存配置，然后重新加载到`Config`
-	 * @param {string} type_ 配置类型
-	 * - 默认为`''`
-	 * - 留空或使用`_`为默认配置
-	 * @param {callbackEdit} functionEdit 配置类型，支持Promise
+	 * @param {string|TypeInfo} type 配置类型
+	 * @param {CallbackEdit} callbackEdit 配置类型，支持Promise异步
 	 * @returns {Poseidon} 该配置系统实例
 	 */
-	 __edit(type_, functionEdit) {
-		const config = this.__read(type_);
+	edit(type, callbackEdit) {
+		const config = this.read(type);
 
-		const raw = functionEdit(config, type_, this);
+
+		const raw = callbackEdit(config, type, this);
 
 		if(raw instanceof Promise) {
-			return raw.then(configNew => {
-				const configFinal = raw === undefined ? config : configNew;
+			return raw
+				.then(configNew => {
+					this.save(type, configNew ?? config);
+					this.load(type);
 
-				this.__save(type_, configFinal);
-				this.__load(type_);
 
-				return this;
-			});
+					return this;
+				});
 		}
-		else {
-			const configFinal = raw === undefined ? config : raw;
 
-			this.__save(type_, configFinal);
-			this.__load(type_);
 
-			return this;
-		}
+		this.save(type, raw ?? config);
+		this.load(type);
+
+
+		return this;
 	}
 
 
 
-
-
 	/**
-	 * @param {string|Array<string>} [types_ = ''] 初始化时读取的配置
-	 * - 默认为`''`，不预加载任何配置
-	 * - 多个配置用`,`分割
-	 * - 使用`_`为默认配置，即`config.json`。可在多配置留空，如`',server'`
-	 * @param {string} dir_ 配置文件夹所在的路径
-	 * - 默认为`PA.parse(require.main.filename).dir`
-	 * - 初始读取的配置
-	 * @returns {Poseidon} 该配置系统实例
+	 * @param {string} [dirConfig = process.cwd()] 配置文件夹所在的路径。默认为`process.cwd()`
+	 * @param {string|Array<string>} [types = ''] 预加载的配置。使用`,`分割。`_`为默认配置
+	 * @returns {Poseidon} 该配置系统实例的`代理`
 	 */
-	constructor(types_ = '', dir_) {
-		let types;
-		if(typeof types_ == 'string') {
-			if(!types_) {
-				types = [];
-			}
-			else {
-				types = types_.split(',');
-			}
+	constructor(dirConfig = process.cwd(), types = '') {
+		if(typeof types != 'string' && !(types instanceof Array)) {
+			throw TypeError(`参数[types]类型必须是string或Array。当前类型~[${typeof types}] (~{${types}})`);
 		}
-		else if(types_ instanceof Array) {
-			types = types_;
-		}
-		else {
-			throw TypeError(`参数[types]类型必须是string或Array。当前值：${typeof types_}，${types_}`);
+
+		if(typeof dirConfig != 'string') {
+			throw TypeError(`参数[dirConfig]类型必须是string。当前类型~[${typeof dirConfig}] (~{${dirConfig}})`);
 		}
 
 
-		let dir;
-		if(dir_ && typeof dir_ == 'string') {
-			dir = dir_;
-		}
-		else if(dir_ === null || dir_ === undefined) {
-			dir = parsePath(require.main.filename).dir;
-		}
-		else {
-			throw TypeError(`参数[dir]类型必须是string或null或undefined。当前值：${typeof dir_}，${dir_}`);
-		}
+		if(typeof types == 'string') { types = types.split(','); }
 
-		this.__dir = dir;
+		this.dirConfig = dirConfig;
 
 
-		const proxyConfig = new Proxy(this,
+		this.proxy = new Proxy(this,
 			{
-				get: (self, key) => {
-					if(key.startsWith('__')) {
-						return self[key];
-					}
+				get(self, key) {
+					if(key == '$') { return self; }
 
-					if(self.__configs._ && key in self.__configs._) {
-						return self.__configs._[key];
-					}
-					else if(key in self.__configs) {
-						return self.__configs[key];
-					}
-					else {
-						return self.__load(key, true);
-					}
+					if(self.configs._ && key in self.configs._) { return self.configs._[key]; }
+
+					if(key in self.configs) { return self.configs[key]; }
+
+
+					return self.load(key, true);
 				},
-				set: (self, key, value) => {
-					// 严格模式下抛出异常
+				set(self, key, value) {
+					// would throw error in strict mode
 					if((function() { return !this; }())) {
 						throw Error(`不允许修改内存中的配置。键：${key}，当前值：${typeof value}，${value}`);
 					}
@@ -320,11 +342,11 @@ const Poseidon = class Poseidon {
 			}
 		);
 
-		types.forEach(type => proxyConfig.__load(type));
+		types.forEach(type => this.load(type));
 
-		return proxyConfig;
+		return this.proxy;
 	}
-};
+}
 
 
 export default Poseidon;
