@@ -118,6 +118,10 @@ class TypeInfo {
 
 
 
+/**
+ * 配置类型
+ * @typedef {string} Type
+ */
 
 
 /**
@@ -128,7 +132,7 @@ class TypeInfo {
  * - `'$'`同样也是保留类型，用于返回Poseidon实例
  * - 支持以整个配置为单位的热修改功能
  * @class
- * @version 6.0.1-2022.03.28.01
+ * @version 6.1.0-2022.03.28.02
  */
 class Poseidon {
 	static TypeInfo = TypeInfo;
@@ -146,11 +150,6 @@ class Poseidon {
 	 */
 	prefixFile = 'config';
 
-	/**
-	 * 配置文件名前缀分隔符
-	 * @type {string}
-	 */
-	sepPrefix = '.';
 
 
 	/**
@@ -161,13 +160,13 @@ class Poseidon {
 
 	/**
 	 * 已加载配置的原始buffer数据
-	 * @type {Object.<string, Buffer>}
+	 * @type {Object.<Type, Buffer>}
 	 */
 	buffers = {};
 
 	/**
 	 * 已加载的JSON配置
-	 * @type {Object.<string, any>}
+	 * @type {Object.<Type, any>}
 	 */
 	configs = {};
 
@@ -175,7 +174,7 @@ class Poseidon {
 
 	/**
 	 * 读取一个配置文件的原始数据，不做任何处理或仅`JSON.parse`
-	 * @param {string|TypeInfo} type 配置类型
+	 * @param {Type|TypeInfo} type 配置类型
 	 * @param {boolean} [willParseJSON = true] `false`，是否解析为JSON数据
 	 * @returns {any|Buffer} 原始的JSON数据或buffer
 	 */
@@ -186,7 +185,7 @@ class Poseidon {
 		const nameFile =
 			symbolHidden +
 			this.prefixFile +
-			(isDefault ? '' : `${this.sepPrefix}${slot}`) +
+			(isDefault ? '' : `.${slot}`) +
 			'.json';
 
 		const bufferConfig = readFileSync(resolve(this.dirConfig, nameFile));
@@ -200,7 +199,7 @@ class Poseidon {
 
 	/**
 	 * 加载一个配置文件。配置的所有值（递归的）会被冻结，且其中的文件路径值会被转换为绝对路径。可重复加载
-	 * @param {string|TypeInfo} type 配置类型
+	 * @param {Type|TypeInfo} type 配置类型
 	 * @param {boolean} [isSafeLoad = false] 加载错误时是否抛出异常
 	 * @returns {any} 对应配置类型的配置数据
 	 */
@@ -227,7 +226,7 @@ class Poseidon {
 
 	/**
 	 * 保存一个配置文件，支持保存前备份文件
-	 * @param {string|TypeInfo} type 配置类型
+	 * @param {Type|TypeInfo} type 配置类型
 	 * @param {any} config 需要保存的配置，任意`fs.writeFile`支持的类型
 	 * @param {boolean} [willBackup = false] `false`，是否备份配置
 	 * @param {string} [dirBackup = this.dirConfig] 备份配置的位置
@@ -239,11 +238,11 @@ class Poseidon {
 		const nameFile =
 			symbolHidden +
 			this.prefixFile +
-			(isDefault ? '' : `${this.sepPrefix}${slot}`);
+			(isDefault ? '' : `.${slot}`);
 
 
 		if(willBackup) {
-			const regexBackup = new RegExp(`^${EscapeStringRegexp(nameFile)}\\.(\\d)\\.backup\\.json$`);
+			const regexBackup = new RegExp(`^${EscapeStringRegexp(nameFile)}\\.(\\d+)\\.backup\\.json$`);
 			const idsBackup = readdirSync(dirBackup)
 				.map(name => (name.match(regexBackup) || [])[1]).filter(n => n);
 			const idBackupMax = Math.max(0, ...idsBackup) + 1;
@@ -266,11 +265,11 @@ class Poseidon {
 	 * 用于应用修改的回调参数
 	 * @callback CallbackEdit
 	 * @param {any} configLoaded 对应的原始配置
-	 * @param {string} typeConfig 配置类型
+	 * @param {TypeInfo} typeConfig 配置类型
 	 * @param {Poseidon} self 该配置系统实例
 	 */
 	/** 修改并保存配置，然后重新加载到`Config`
-	 * @param {string|TypeInfo} type 配置类型
+	 * @param {Type|TypeInfo} type 配置类型
 	 * @param {CallbackEdit} callbackEdit 配置类型，支持Promise异步
 	 * @returns {Poseidon} 该配置系统实例
 	 */
@@ -300,10 +299,37 @@ class Poseidon {
 	}
 
 
+	/**
+	 * 获得可用的
+	 */
+	getTypesExist() {
+		const files = readdirSync(this.dirConfig);
+
+
+		const regexDefault = new RegExp(`^\\.?${this.prefixFile}\\.json$`);
+		const regexConfig = new RegExp(`^\\.?${this.prefixFile}\\.(.*?)\\.json$`);
+		const regexBackup = new RegExp(`^\\.?${this.prefixFile}\\..*?\\.(\\d+)\\.backup\\.json$`);
+
+
+		return files.map(file => {
+			const symbolHidden = file.startsWith('.') ? '.' : '';
+
+
+			if(regexDefault.test(file)) { return `${symbolHidden}_`; }
+
+			if(regexBackup.test(file)) { return; }
+
+
+			const type = file.match(regexConfig)?.[1];
+			return type ? `${symbolHidden}${type}` : undefined;
+		}).filter(type => type);
+	}
+
+
 
 	/**
 	 * @param {string} [dirConfig = process.cwd()] 配置文件夹所在的路径。默认为`process.cwd()`
-	 * @param {string|Array<string>} [types = ''] 预加载的配置。使用`,`分割。`_`为默认配置
+	 * @param {string|Array.<Type|TypeInfo>} [types = ''] 预加载的配置。`,`分割。`_`默认配置
 	 * @returns {Poseidon} 该配置系统实例的`代理`
 	 */
 	constructor(dirConfig = process.cwd(), types = '') {
@@ -315,8 +341,6 @@ class Poseidon {
 			throw TypeError(`参数[dirConfig]类型必须是string。当前类型~[${typeof dirConfig}] (~{${dirConfig}})`);
 		}
 
-
-		if(typeof types == 'string') { types = types.split(',').filter(type => type); }
 
 		this.dirConfig = dirConfig;
 
@@ -342,7 +366,7 @@ class Poseidon {
 			}
 		);
 
-		types.forEach(type => this.load(type));
+		types.split(',').filter(type => type).forEach(type => this.load(type));
 
 		return this.proxy;
 	}
