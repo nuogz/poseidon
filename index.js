@@ -128,7 +128,7 @@ class TypeInfo {
  * - `'$'`同样也是保留类型，用于返回Poseidon实例
  * - 支持以整个配置为单位的热修改功能
  * @class
- * @version 6.0.0-2022.03.26.01
+ * @version 6.0.1-2022.03.28.01
  */
 class Poseidon {
 	static TypeInfo = TypeInfo;
@@ -316,7 +316,7 @@ class Poseidon {
 		}
 
 
-		if(typeof types == 'string') { types = types.split(','); }
+		if(typeof types == 'string') { types = types.split(',').filter(type => type); }
 
 		this.dirConfig = dirConfig;
 
