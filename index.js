@@ -132,7 +132,7 @@ class TypeInfo {
  * - `'$'`同样也是保留类型，用于返回Poseidon实例
  * - 支持以整个配置为单位的热修改功能
  * @class
- * @version 6.1.0-2022.03.28.02
+ * @version 6.1.1-2022.04.02.01
  */
 class Poseidon {
 	static TypeInfo = TypeInfo;
@@ -212,7 +212,7 @@ class Poseidon {
 			const config = this.configs[slot] = JSON.parse(buffer);
 
 
-			return config && typeof config != 'object' ?
+			return config && typeof config == 'object' ?
 				deepFreeze(absolutizePath(config, this.dirConfig)) :
 				config;
 		}
