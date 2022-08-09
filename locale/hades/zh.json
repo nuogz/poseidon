@@ -1,0 +1,8 @@
+{
+	"translation": {
+		"typeTypeError": "~[\"type\"]参数必须是非空字符串。收到 {{type,hadesValue}} ({{typeType,hadesTerm}})",
+		"typesTypeError": "~[\"types\"]参数必须是字符串或数组。收到 {{types,hadesValue}} ({{type,hadesTerm}})",
+		"dirConfigTypeError": "~[\"dirConfig\"]参数必须是字符串。收到 {{dirConfig,hadesValue}} ({{type,hadesTerm}})",
+		"invalidSetError": "不允许修改内存中的配置。键 {{key,hadesValue}}, 值 {{value,hadesValue}} ({{type,hadesTerm}})"
+	}
+}

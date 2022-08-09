@@ -1,19 +1,27 @@
 {
 	"name": "@nuogz/poseidon",
-	"version": "6.1.1",
-	"description": "A type-based config library",
+	"version": "7.0.0",
+	"description": "type-based config library",
 	"author": "Nuogz",
 	"license": "LGPL-3.0-or-later",
-	"main": "index.js",
+	"main": "./index.js",
 	"type": "module",
+	"repository": {
+		"type": "git",
+		"url": "github:nuogz/poseidon"
+	},
+	"files": [
+		"index.js",
+		"locale/**"
+	],
 	"engines": {
 		"node": ">=14.18.1"
 	},
 	"devDependencies": {
-		"eslint": "^8.12.0",
-		"mocha": "^9.2.2"
+		"eslint": "^8.21.0"
 	},
 	"dependencies": {
+		"@nuogz/i18n": "^1.0.2",
 		"escape-string-regexp": "^5.0.0"
 	}
 }

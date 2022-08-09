@@ -1,13 +1,24 @@
 import { readdirSync, readFileSync, writeFileSync } from 'fs';
-import { resolve } from 'path';
+import { dirname, resolve } from 'path';
 
 
 import EscapeStringRegexp from 'escape-string-regexp';
+import initI18N from '@nuogz/i18n';
+import { fileURLToPath } from 'url';
 
 
-/** 深度冻结对象 */
+
+const copyJSON = object => JSON.parse(JSON.stringify(object));
+
+
+const dirPackage = dirname(fileURLToPath(import.meta.url));
+const I18N = await initI18N(dirPackage);
+const T = (key, options = {}, lng) => I18N.t(key, Object.assign(copyJSON(options), { lng }));
+
+
+
 const deepFreeze = object => {
-	// 在冻结自身之前冻结属性
+	// freeze properties before freeze self
 	Object.getOwnPropertyNames(object)
 		.forEach(name => {
 			const prop = object[name];
@@ -20,7 +31,6 @@ const deepFreeze = object => {
 	return Object.freeze(object);
 };
 
-/** 针对Object的递归相对路径绝对化 */
 const absolutizePathObject = (object, dir) => {
 	const objectParsed = {};
 
@@ -39,7 +49,6 @@ const absolutizePathObject = (object, dir) => {
 	return objectParsed;
 };
 
-/** 递归相对路径绝对化 */
 const absolutizePath = (config, dir) => {
 	Object.entries(config).forEach(([key, value]) => {
 		if(key.startsWith('_')) {
@@ -48,7 +57,7 @@ const absolutizePath = (config, dir) => {
 			if(typeof value == 'string') {
 				config[keyParsed] = resolve(dir, value);
 			}
-			// 若值是对象，且key以下划线作为前缀，则该对象所有子值（包括递归的）均视为路径
+			// if the value is an object, and the key is prefixed by `_`, all child values (including recursive) of this value are regarded as paths
 			else if(value && typeof value == 'object') {
 				config[keyParsed] = absolutizePathObject(value, dir);
 			}
@@ -61,22 +70,22 @@ const absolutizePath = (config, dir) => {
 	return config;
 };
 
-/** 配置类型信息 */
+
+
 class TypeInfo {
 	/**
-	 * 解析指定配置类型的参数
 	 * @param {string} type
 	 * @param {boolean} [isParseHidden = true]
-	 * @returns {TypeInfo} 配置类型信息
+	 * @returns {TypeInfo}
 	 */
-	static parse(type, isParseHidden = true) {
+	static parse(type, isParseHidden = true, locale) {
 		if(type instanceof TypeInfo) { return type; }
 
 
 		let slot;
 
 		if(typeof type != 'string' || !(slot = type.trim())) {
-			throw TypeError(`参数~[type]类型必须是非空的string。当前类型~[${typeof type}] (~{${type}})`);
+			throw TypeError(T('typeTypeError', { type, typeType: typeof type }), locale);
 		}
 
 
@@ -94,17 +103,17 @@ class TypeInfo {
 
 
 	/**
-	 * 配置类型名称
+	 * config's slot
 	 * @type {string}
 	 */
 	slot;
 	/**
-	 * 隐藏配置符号（如果配置是隐藏的话）
+	 * the symbol of hidden config
 	 * @type {string}
 	 */
 	symbolHidden;
 	/**
-	 * 指示该类型是否默认配置
+	 * detect config is default config
 	 * @type {boolean}
 	 */
 	isDefault;
@@ -119,33 +128,33 @@ class TypeInfo {
 
 
 /**
- * 配置类型
+ * Config Type
  * @typedef {string} Type
  */
 
 
 /**
- * #### 配置系统（波塞冬）
- * - 已加载的配置均为只读，无法直接修改配置
- * - 以JSON文件作为一个配置单位，支持读取同一目录下的分类存放。默认配置`config.json`，分类配置`config.*.json`
- * - 默认配置没有分类，`_`为默认配置的保留配置名
- * - `'$'`同样也是保留类型，用于返回Poseidon实例
- * - 支持以整个配置为单位的热修改功能
+ * - all loaded configs are read-only and cannot be modified directly
+ * - one JSON file as a configuration unit
+ * - all configs storage in the same directory.
+ * - default config is `config.json'. classified config is `config.*.json`
+ * - `_` is the reserved slot of the default config
+ * - `$` is the reserved slot too. it used to access Poseidon Object
+ * - supports hot modification in file units
  * @class
- * @version 6.1.1-2022.04.02.01
  */
-class Poseidon {
+export default class Poseidon {
 	static TypeInfo = TypeInfo;
 
 
 	/**
-	 * 实例自身
+	 * instance
 	 * @type {Poseidon}
 	 */
 	$ = this;
 
 	/**
-	 * 配置文件名前缀
+	 * the prefix of config file
 	 * @type {string}
 	 */
 	prefixFile = 'config';
@@ -153,19 +162,19 @@ class Poseidon {
 
 
 	/**
-	 * 配置文件夹所在的路径
+	 * dir of configs
 	 * @type {string}
 	 */
 	dirConfig;
 
 	/**
-	 * 已加载配置的原始buffer数据
+	 * loaded file buffer data
 	 * @type {Object.<Type, Buffer>}
 	 */
 	buffers = {};
 
 	/**
-	 * 已加载的JSON配置
+	 * loaded JSON data
 	 * @type {Object.<Type, any>}
 	 */
 	configs = {};
@@ -173,13 +182,21 @@ class Poseidon {
 
 
 	/**
-	 * 读取一个配置文件的原始数据，不做任何处理或仅`JSON.parse`
-	 * @param {Type|TypeInfo} type 配置类型
-	 * @param {boolean} [willParseJSON = true] `false`，是否解析为JSON数据
-	 * @returns {any|Buffer} 原始的JSON数据或buffer
+	 * logger locale
+	 * @type {string}
+	 */
+	locale;
+
+
+
+	/**
+	 * read the raw data of a config file, without any processing or only `JSON.parse`
+	 * @param {Type|TypeInfo} type
+	 * @param {boolean} [willParseJSON = true] `false`，detect to parse as JSON
+	 * @returns {any|Buffer} raw JSON data or buffer
 	 */
 	read(type, willParseJSON = true) {
-		const { slot, symbolHidden, isDefault } = TypeInfo.parse(type);
+		const { slot, symbolHidden, isDefault } = TypeInfo.parse(type, true, this.locale);
 
 
 		const nameFile =
@@ -198,13 +215,15 @@ class Poseidon {
 
 
 	/**
-	 * 加载一个配置文件。配置的所有值（递归的）会被冻结，且其中的文件路径值会被转换为绝对路径。可重复加载
-	 * @param {Type|TypeInfo} type 配置类型
-	 * @param {boolean} [isSafeLoad = false] 加载错误时是否抛出异常
-	 * @returns {any} 对应配置类型的配置数据
+	 * load a config file。the config (recursive) will be fronzen
+	 * all marked file path values are converted to absolute paths
+	 * reloading is repeatable
+	 * @param {Type|TypeInfo} type
+	 * @param {boolean} [isSafeLoad = false] detect throw error
+	 * @returns {any}
 	 */
 	load(type, isSafeLoad = false) {
-		const { slot } = TypeInfo.parse(type);
+		const { slot } = TypeInfo.parse(type, true, this.locale);
 
 
 		try {
@@ -225,15 +244,15 @@ class Poseidon {
 
 
 	/**
-	 * 保存一个配置文件，支持保存前备份文件
-	 * @param {Type|TypeInfo} type 配置类型
-	 * @param {any} config 需要保存的配置，任意`fs.writeFile`支持的类型
-	 * @param {boolean} [willBackup = false] `false`，是否备份配置
-	 * @param {string} [dirBackup = this.dirConfig] 备份配置的位置
-	 * @returns {Poseidon} 该配置系统实例
+	 * save a config to file. support backup config file before saving
+	 * @param {Type|TypeInfo} type
+	 * @param {any} config the config. any data type supported by 'fs.writeFile'
+	 * @param {boolean} [willBackup = false] `false`，detect backup
+	 * @param {string} [dirBackup = this.dirConfig] dir of config backup
+	 * @returns {Poseidon}
 	 */
 	save(type, config, willBackup = false, dirBackup = this.dirConfig) {
-		const { slot, symbolHidden, isDefault } = TypeInfo.parse(type);
+		const { slot, symbolHidden, isDefault } = TypeInfo.parse(type, true, this.locale);
 
 		const nameFile =
 			symbolHidden +
@@ -262,16 +281,15 @@ class Poseidon {
 
 
 	/**
-	 * 用于应用修改的回调参数
 	 * @callback CallbackEdit
-	 * @param {any} configLoaded 对应的原始配置
-	 * @param {TypeInfo} typeConfig 配置类型
-	 * @param {Poseidon} self 该配置系统实例
+	 * @param {any} configLoaded raw config
+	 * @param {TypeInfo} typeConfig
+	 * @param {Poseidon} self
 	 */
-	/** 修改并保存配置，然后重新加载到`Config`
-	 * @param {Type|TypeInfo} type 配置类型
-	 * @param {CallbackEdit} callbackEdit 配置类型，支持Promise异步
-	 * @returns {Poseidon} 该配置系统实例
+	/** modify, save and reaload a config
+	 * @param {Type|TypeInfo} type
+	 * @param {CallbackEdit} callbackEdit support Promise
+	 * @returns {Poseidon}
 	 */
 	edit(type, callbackEdit) {
 		const config = this.read(type);
@@ -300,7 +318,8 @@ class Poseidon {
 
 
 	/**
-	 * 获得可用的
+	 * get available types
+	 * @returns {Array.<Type>}
 	 */
 	getTypesExist() {
 		const files = readdirSync(this.dirConfig);
@@ -328,17 +347,18 @@ class Poseidon {
 
 
 	/**
-	 * @param {string} [dirConfig = process.cwd()] 配置文件夹所在的路径。默认为`process.cwd()`
-	 * @param {string|Array.<Type|TypeInfo>} [types = ''] 预加载的配置。`,`分割。`_`默认配置
-	 * @returns {Poseidon} 该配置系统实例的`代理`
+	 * @param {string} [dirConfig = process.cwd()] dir of configs. `process.cwd()` is default.
+	 * @param {string|Array.<Type|TypeInfo>} [types = ''] types for preloading。splited by `,`. `_` is default.
+	 * @param {string} [locale]
+	 * @returns {Poseidon}
 	 */
-	constructor(dirConfig = process.cwd(), types = '') {
+	constructor(dirConfig = process.cwd(), types = '', locale) {
 		if(typeof types != 'string' && !(types instanceof Array)) {
-			throw TypeError(`参数[types]类型必须是string或Array。当前类型~[${typeof types}] (~{${types}})`);
+			throw TypeError(T('typesTypeError', { types, type: typeof types }), this.locale);
 		}
 
 		if(typeof dirConfig != 'string') {
-			throw TypeError(`参数[dirConfig]类型必须是string。当前类型~[${typeof dirConfig}] (~{${dirConfig}})`);
+			throw TypeError(T('dirConfigTypeError', { dirConfig, type: typeof dirConfig }), this.locale);
 		}
 
 
@@ -360,7 +380,7 @@ class Poseidon {
 				set(self, key, value) {
 					// would throw error in strict mode
 					if((function() { return !this; }())) {
-						throw Error(`不允许修改内存中的配置。键：${key}，当前值：${typeof value}，${value}`);
+						throw Error(T('invalidSetError', { key, value, type: typeof value }), this.locale);
 					}
 				}
 			}
@@ -371,6 +391,3 @@ class Poseidon {
 		return this.proxy;
 	}
 }
-
-
-export default Poseidon;

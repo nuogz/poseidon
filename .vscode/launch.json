@@ -2,9 +2,9 @@
 	"version": "0.2.0",
 	"configurations": [
 		{
-			"type": "pwa-node",
+			"type": "node",
 			"request": "launch",
-			"name": "Test Current File",
+			"name": "Launch Current File",
 			"console": "integratedTerminal",
 			"runtimeExecutable": "node.exe",
 			"skipFiles": [
@@ -14,7 +14,7 @@
 			"program": "${fileBasename}",
 			"args": [
 				"${workspaceRoot}"
-			],
-		},
+			]
+		}
 	]
 }

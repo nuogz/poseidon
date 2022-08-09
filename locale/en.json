@@ -1,0 +1,8 @@
+{
+	"translation": {
+		"typeTypeError": "The \"type\" argument must be of type non-empty string. Received {{type}} ({{typeType}})",
+		"typesTypeError": "The \"types\" argument must be of type string or Array. Received {{types}} ({{type}})",
+		"dirConfigTypeError": "The \"dirConfig\" argument must be of type string. Received {{dirConfig}} ({{type}})",
+		"invalidSetError": "modify configs in memory is not allowed. Key {{key}}, value {{value}} ({{type}})"
+	}
+}
