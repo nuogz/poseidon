@@ -1,6 +1,6 @@
 {
 	"name": "@nuogz/poseidon",
-	"version": "7.0.0",
+	"version": "7.0.2",
 	"description": "type-based config library",
 	"author": "Nuogz",
 	"license": "LGPL-3.0-or-later",
@@ -12,6 +12,7 @@
 	},
 	"files": [
 		"index.js",
+		"lib/**",
 		"locale/**"
 	],
 	"engines": {
@@ -21,7 +22,7 @@
 		"eslint": "^8.21.0"
 	},
 	"dependencies": {
-		"@nuogz/i18n": "^1.0.2",
+		"@nuogz/i18n": "^1.2.0",
 		"escape-string-regexp": "^5.0.0"
 	}
 }

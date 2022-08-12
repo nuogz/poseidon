@@ -1,8 +1,10 @@
 {
 	"translation": {
-		"typeTypeError": "\"type\"参数必须是非空字符串。收到 {{type}} ({{typeType}})",
-		"typesTypeError": "\"types\"参数必须是字符串或数组。收到 {{types}} ({{type}})",
-		"dirConfigTypeError": "\"dirConfig\"参数必须是字符串。收到 {{dirConfig}} ({{type}})",
-		"invalidSetError": "不允许修改内存中的配置。键 {{key}}, 值 {{value}} ({{type}})"
+		"error": {
+			"typeType": "\"type\"参数必须是非空字符串。收到：{{type}} ({{typeType}})",
+			"typesType": "\"types\"参数必须是字符串或数组。收到：{{types}} ({{type}})",
+			"dirConfigType": "\"dirConfig\"参数必须是字符串。收到：{{dirConfig}} ({{type}})",
+			"invalidSet": "不允许修改内存中的配置。键：{{key}}, 值：{{value}} ({{type}})"
+		}
 	}
 }

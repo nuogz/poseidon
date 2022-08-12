@@ -1,12 +1,12 @@
 lockfileVersion: 5.4
 
 specifiers:
-  '@nuogz/i18n': ^1.0.2
+  '@nuogz/i18n': ^1.2.0
   escape-string-regexp: ^5.0.0
   eslint: ^8.21.0
 
 dependencies:
-  '@nuogz/i18n': 1.0.2
+  '@nuogz/i18n': 1.2.0
   escape-string-regexp: 5.0.0
 
 devDependencies:
@@ -78,8 +78,8 @@ packages:
       fastq: 1.13.0
     dev: true
 
-  /@nuogz/i18n/1.0.2:
-    resolution: {integrity: sha512-m+n7NKyKMyU87CuHavR0gwDQRExUcqg6JM9d96yNDCZaZ6T3PZ+76FgW1Tz1mZG9Dx49bm4mLNRUZ+TnSR594w==}
+  /@nuogz/i18n/1.2.0:
+    resolution: {integrity: sha512-ku7AqnX0Acny5tp2pn24uWWt85vgs+yUcYnUivLYucHjH/r7DQ9QMGJ8Xs3pkuTZxQq1xr64YCcwPH78PBX8uA==}
     engines: {node: '>=14.18.1'}
     dependencies:
       i18next: 21.9.0

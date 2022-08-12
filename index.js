@@ -1,19 +1,9 @@
 import { readdirSync, readFileSync, writeFileSync } from 'fs';
-import { dirname, resolve } from 'path';
-
+import { resolve } from 'path';
 
 import EscapeStringRegexp from 'escape-string-regexp';
-import initI18N from '@nuogz/i18n';
-import { fileURLToPath } from 'url';
 
-
-
-const copyJSON = object => JSON.parse(JSON.stringify(object));
-
-
-const dirPackage = dirname(fileURLToPath(import.meta.url));
-const I18N = await initI18N(dirPackage);
-const T = (key, options = {}, lng) => I18N.t(key, Object.assign(copyJSON(options), { lng }));
+import { T, TT } from './lib/i18n.js';
 
 
 
@@ -85,7 +75,7 @@ class TypeInfo {
 		let slot;
 
 		if(typeof type != 'string' || !(slot = type.trim())) {
-			throw TypeError(T('typeTypeError', { type, typeType: typeof type }), locale);
+			throw TypeError(T('error.typeType', { type, typeType: typeof type }), locale);
 		}
 
 
@@ -353,12 +343,15 @@ export default class Poseidon {
 	 * @returns {Poseidon}
 	 */
 	constructor(dirConfig = process.cwd(), types = '', locale) {
+		this.locale = locale;
+		this.TT = TT(this.locale);
+
 		if(typeof types != 'string' && !(types instanceof Array)) {
-			throw TypeError(T('typesTypeError', { types, type: typeof types }), this.locale);
+			throw TypeError(this.TT('error.typesType', { types, type: typeof types }));
 		}
 
 		if(typeof dirConfig != 'string') {
-			throw TypeError(T('dirConfigTypeError', { dirConfig, type: typeof dirConfig }), this.locale);
+			throw TypeError(this.TT('error.dirConfigType', { dirConfig, type: typeof dirConfig }));
 		}
 
 
@@ -380,7 +373,7 @@ export default class Poseidon {
 				set(self, key, value) {
 					// would throw error in strict mode
 					if((function() { return !this; }())) {
-						throw Error(T('invalidSetError', { key, value, type: typeof value }), this.locale);
+						throw Error(this.TT('error.invalidSet', { key, value, type: typeof value }));
 					}
 				}
 			}
