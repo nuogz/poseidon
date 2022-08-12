@@ -1,7 +1,11 @@
 # CHANGELOG
 
+## v7.0.3 - 2022.08.12 09
+* fix translation function in proxy
+
+
 ## v7.0.2 - 2022.08.12 09
-* improve `locale` keys and translations.
+* improve `locale` keys and translations
 * bump up `@nuogz/i18n` to `1.2.0` and update related code
 
 

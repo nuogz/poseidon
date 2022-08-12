@@ -177,6 +177,8 @@ export default class Poseidon {
 	 */
 	locale;
 
+	TT;
+
 
 
 	/**
@@ -373,7 +375,7 @@ export default class Poseidon {
 				set(self, key, value) {
 					// would throw error in strict mode
 					if((function() { return !this; }())) {
-						throw Error(this.TT('error.invalidSet', { key, value, type: typeof value }));
+						throw Error(self.TT('error.invalidSet', { key, value, type: typeof value }));
 					}
 				}
 			}
