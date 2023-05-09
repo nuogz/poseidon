@@ -1,4 +1,4 @@
 {
 	"files.trimTrailingWhitespace": true,
-	"javascript.preferences.importModuleSpecifierEnding": "js",
+	"javascript.preferences.importModuleSpecifierEnding": "js"
 }

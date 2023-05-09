@@ -2,7 +2,7 @@
 
 ## v8.0.0 - 2023.05.08 18
 * bump up `@nuogz/i18n` to `v3.x` and renew related code
-* improve `d.ts` and code struct
+* add `d.ts` and renew related code
 * bump up dependencies
 
 
