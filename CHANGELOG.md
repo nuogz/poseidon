@@ -1,5 +1,8 @@
 # CHANGELOG
 
+## v8.0.1 - 2023.05.09 19
+* fix `package.json`
+
 ## v8.0.0 - 2023.05.08 18
 * bump up `@nuogz/i18n` to `v3.x` and renew related code
 * add `d.ts` and renew related code
