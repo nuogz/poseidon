@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## v8.0.0 - 2023.05.08 18
+* bump up `@nuogz/i18n` to `v3.x` and renew related code
+* improve `d.ts` and code struct
+* bump up dependencies
+
+
 ## v7.0.3 - 2022.08.12 09
 * fix translation function in proxy
 

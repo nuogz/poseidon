@@ -1,10 +1,12 @@
 {
-	"translation": {
-		"error": {
-			"typeType": "\"type\"参数必须是非空字符串。收到：{{type}} ({{typeType}})",
-			"typesType": "\"types\"参数必须是字符串或数组。收到：{{types}} ({{type}})",
-			"dirConfigType": "\"dirConfig\"参数必须是字符串。收到：{{dirConfig}} ({{type}})",
-			"invalidSet": "不允许修改内存中的配置。键：{{key}}, 值：{{value}} ({{type}})"
-		}
-	}
+	"ArgumentError": {
+		"invalidType@proto": "参数'type'必须是类型非空的string，值：{{-type,valueType}}",
+		"invalidType@hades": "参数~[type]必须是类型非空的~{string}，值{{-type,valueType@hades}}",
+		"invalidTypes@proto": "参数'types'必须是类型string或实例Array的其中之一，值：{{-types,valueType}}",
+		"invalidTypes@hades": "参数~[types]必须是型~{string}或实例~{Array}的其中之一，值{{-types,valueType@hades}}",
+		"invalidDirConfig@proto": "参数'dirConfig'必须是类型string，值：{{-dirConfig,valueType}}",
+		"invalidDirConfig@hades": "参数~[dirConfig]必须是类型~{string}，值{{-dirConfig,valueType@hades}}"
+	},
+	"forbiddenSet@proto": "禁止修改内存中的配置，键：{{key}}, 值：{{-value,valueType}}",
+	"forbiddenSet@hades": "禁止修改内存中的配置，键{{key,value@hades}}}, 值{{-value,valueType@hades}}"
 }

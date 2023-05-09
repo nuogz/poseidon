@@ -1,4 +1,6 @@
 const PKG = require('./package.json');
+const typesSource = PKG.typesSource instanceof Array ? PKG.typesSource : [];
+
 
 const parseKey = (raw, target) => {
 	const key = raw.split(/(?=[A-Z])/).join('-').toLowerCase();
@@ -14,12 +16,32 @@ const parseKeys = rc => {
 };
 
 
+const rcSources = [];
 
-let rcBrowser;
-if((PKG.dependencies ?? {})['eslint-plugin-vue'] || (PKG.devDependencies ?? {})['eslint-plugin-vue']) {
-	rcBrowser = parseKeys({
-		files: ['src/**/*.{js,vue}'],
-		excludedFiles: ['src/**/*.{api,lib,map}.js', 'src/**/*.lib/**/*.js'],
+if(typesSource.includes('browser')) {
+	const rcBrower = {
+		files: ['src/**/*.js'],
+		excludedFiles: [],
+		env: { es2022: true, node: false, browser: true },
+	};
+	rcSources.push(rcBrower);
+
+	if(typesSource.includes('node-browser-share')) {
+		rcBrower.env.node = true;
+		rcBrower.excludedFiles.push('src/**/*.web.js', 'src/**/*.web/**/*.js');
+
+		rcSources.push({
+			files: ['src/**/*.web.js', 'src/**/*.web/**/*.js'],
+			excludedFiles: [],
+			env: { es2022: true, node: false, browser: true },
+		});
+	}
+}
+
+if(typesSource.includes('vue')) {
+	rcSources.push({
+		files: ['src/**/*.vue'],
+		excludedFiles: [],
 		env: { es2022: true, node: false, browser: true },
 		extends: ['plugin:vue/vue3-recommended'],
 		parserOptions: { ecmaVersion: 2022 },
@@ -46,6 +68,12 @@ if((PKG.dependencies ?? {})['eslint-plugin-vue'] || (PKG.devDependencies ?? {})[
 	});
 }
 
+if(typesSource.includes('node-mixin')) {
+	rcSources.forEach(rcSource =>
+		rcSource.excludedFiles.push(...['src/**/*.{api,lib,map}.js', 'src/**/*.lib/**/*.js'])
+	);
+}
+
 
 const rcNode = parseKeys({
 	root: true,
@@ -63,7 +91,7 @@ const rcNode = parseKeys({
 		noConsole: [2],
 		requireAtomicUpdates: [1, { allowProperties: true }],
 	},
-	overrides: [rcBrowser].filter(rc => rc)
+	overrides: rcSources
 });
 
 

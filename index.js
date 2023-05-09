@@ -1,9 +1,16 @@
 import { readdirSync, readFileSync, writeFileSync } from 'fs';
-import { resolve } from 'path';
+import { dirname, resolve } from 'path';
+import { fileURLToPath } from 'url';
 
 import EscapeStringRegexp from 'escape-string-regexp';
 
-import { T, TT } from './lib/i18n.js';
+import { loadI18NResource, TT } from '@nuogz/i18n';
+
+
+
+loadI18NResource('@nuogz/poseidon', resolve(dirname(fileURLToPath(import.meta.url)), 'locale'));
+
+const T = TT('@nuogz/poseidon');
 
 
 
@@ -61,30 +68,31 @@ const absolutizePath = (config, dir) => {
 };
 
 
+/** @typedef {string} ConfigTypeRaw */
 
-class TypeInfo {
+class ConfigType {
 	/**
 	 * @param {string} type
-	 * @param {boolean} [isParseHidden = true]
-	 * @returns {TypeInfo}
+	 * @param {boolean} [willParseHidden = true]
+	 * @returns {ConfigType}
 	 */
-	static parse(type, isParseHidden = true, locale) {
-		if(type instanceof TypeInfo) { return type; }
+	static parse(type, willParseHidden = true) {
+		if(type instanceof ConfigType) { return type; }
 
 
 		let slot;
 
 		if(typeof type != 'string' || !(slot = type.trim())) {
-			throw TypeError(T('error.typeType', { type, typeType: typeof type }), locale);
+			throw TypeError(T('ArgumentError.invalidType', { type }));
 		}
 
 
-		const isHidden = slot.startsWith('.') && isParseHidden;
+		const isHidden = willParseHidden && slot.startsWith('.');
 
 		if(isHidden) { slot = slot.replace('.', ''); }
 
 
-		return new TypeInfo(
+		return new ConfigType(
 			slot,
 			isHidden ? '.' : '',
 			slot == '_'
@@ -108,6 +116,12 @@ class TypeInfo {
 	 */
 	isDefault;
 
+
+	/**
+	 * @param {string} slot
+	 * @param {string} symbolHidden
+	 * @param {boolean} isDefault
+	 */
 	constructor(slot, symbolHidden, isDefault) {
 		this.slot = slot;
 		this.symbolHidden = symbolHidden;
@@ -117,24 +131,13 @@ class TypeInfo {
 
 
 
-/**
- * Config Type
- * @typedef {string} Type
- */
+/** @typedef {any} ConfigRaw */
+/** @typedef {any} ConfigFreezed */
 
 
-/**
- * - all loaded configs are read-only and cannot be modified directly
- * - one JSON file as a configuration unit
- * - all configs storage in the same directory.
- * - default config is `config.json'. classified config is `config.*.json`
- * - `_` is the reserved slot of the default config
- * - `$` is the reserved slot too. it used to access Poseidon Object
- * - supports hot modification in file units
- * @class
- */
-export default class Poseidon {
-	static TypeInfo = TypeInfo;
+
+export class Poseidon {
+	static ConfigType = ConfigType;
 
 
 	/**
@@ -159,36 +162,31 @@ export default class Poseidon {
 
 	/**
 	 * loaded file buffer data
-	 * @type {Object.<Type, Buffer>}
+	 * @type {Object.<string, Buffer>}
 	 */
 	buffers = {};
 
 	/**
 	 * loaded JSON data
-	 * @type {Object.<Type, any>}
+	 * @type {Object.<string, ConfigRaw>}
 	 */
 	configs = {};
 
 
 
-	/**
-	 * logger locale
-	 * @type {string}
-	 */
-	locale;
-
-	TT;
+	/** @type {PoseidonProxy} */
+	proxy;
 
 
 
 	/**
 	 * read the raw data of a config file, without any processing or only `JSON.parse`
-	 * @param {Type|TypeInfo} type
+	 * @param {ConfigTypeRaw|ConfigType} type
 	 * @param {boolean} [willParseJSON = true] `false`，detect to parse as JSON
-	 * @returns {any|Buffer} raw JSON data or buffer
+	 * @returns {ConfigRaw|Buffer} raw JSON data or buffer
 	 */
 	read(type, willParseJSON = true) {
-		const { slot, symbolHidden, isDefault } = TypeInfo.parse(type, true, this.locale);
+		const { slot, symbolHidden, isDefault } = ConfigType.parse(type, true);
 
 
 		const nameFile =
@@ -207,21 +205,20 @@ export default class Poseidon {
 
 
 	/**
-	 * load a config file。the config (recursive) will be fronzen
+	 * load a config file. the config (recursive) will be fronzen
 	 * all marked file path values are converted to absolute paths
 	 * reloading is repeatable
-	 * @param {Type|TypeInfo} type
+	 * @param {ConfigTypeRaw|ConfigType} type
 	 * @param {boolean} [isSafeLoad = false] detect throw error
-	 * @returns {any}
+	 * @returns {ConfigFreezed}
 	 */
 	load(type, isSafeLoad = false) {
-		const { slot } = TypeInfo.parse(type, true, this.locale);
+		const { slot } = ConfigType.parse(type, true);
 
 
 		try {
 			const buffer = this.buffers[slot] = this.read(type, false);
 			const config = this.configs[slot] = JSON.parse(buffer);
-
 
 			return config && typeof config == 'object' ?
 				deepFreeze(absolutizePath(config, this.dirConfig)) :
@@ -237,14 +234,14 @@ export default class Poseidon {
 
 	/**
 	 * save a config to file. support backup config file before saving
-	 * @param {Type|TypeInfo} type
-	 * @param {any} config the config. any data type supported by 'fs.writeFile'
+	 * @param {ConfigTypeRaw|ConfigType} type
+	 * @param {ConfigRaw} config the config which data type supported by 'fs.writeFile'
 	 * @param {boolean} [willBackup = false] `false`，detect backup
 	 * @param {string} [dirBackup = this.dirConfig] dir of config backup
 	 * @returns {Poseidon}
 	 */
 	save(type, config, willBackup = false, dirBackup = this.dirConfig) {
-		const { slot, symbolHidden, isDefault } = TypeInfo.parse(type, true, this.locale);
+		const { slot, symbolHidden, isDefault } = ConfigType.parse(type, true);
 
 		const nameFile =
 			symbolHidden +
@@ -274,12 +271,13 @@ export default class Poseidon {
 
 	/**
 	 * @callback CallbackEdit
-	 * @param {any} configLoaded raw config
-	 * @param {TypeInfo} typeConfig
+	 * @param {ConfigRaw} configLoaded raw config
+	 * @param {ConfigType} typeConfig
 	 * @param {Poseidon} self
+	 * @returns {ConfigRaw}
 	 */
 	/** modify, save and reaload a config
-	 * @param {Type|TypeInfo} type
+	 * @param {ConfigTypeRaw|ConfigType} type
 	 * @param {CallbackEdit} callbackEdit support Promise
 	 * @returns {Poseidon}
 	 */
@@ -311,7 +309,7 @@ export default class Poseidon {
 
 	/**
 	 * get available types
-	 * @returns {Array.<Type>}
+	 * @returns {Array.<ConfigTypeRaw>}
 	 */
 	getTypesExist() {
 		const files = readdirSync(this.dirConfig);
@@ -340,20 +338,15 @@ export default class Poseidon {
 
 	/**
 	 * @param {string} [dirConfig = process.cwd()] dir of configs. `process.cwd()` is default.
-	 * @param {string|Array.<Type|TypeInfo>} [types = ''] types for preloading。splited by `,`. `_` is default.
-	 * @param {string} [locale]
-	 * @returns {Poseidon}
+	 * @param {string|Array.<ConfigTypeRaw|ConfigType>} [types = ''] types for preloading. splited by `,`. `_` is default.
 	 */
-	constructor(dirConfig = process.cwd(), types = '', locale) {
-		this.locale = locale;
-		this.TT = TT(this.locale);
-
+	constructor(dirConfig = process.cwd(), types = '') {
 		if(typeof types != 'string' && !(types instanceof Array)) {
-			throw TypeError(this.TT('error.typesType', { types, type: typeof types }));
+			throw TypeError(T('ArgumentError.invalidTypes', { types }));
 		}
 
 		if(typeof dirConfig != 'string') {
-			throw TypeError(this.TT('error.dirConfigType', { dirConfig, type: typeof dirConfig }));
+			throw TypeError(T('ArgumentError.invalidDirConfig', { dirConfig }));
 		}
 
 
@@ -375,14 +368,41 @@ export default class Poseidon {
 				set(self, key, value) {
 					// would throw error in strict mode
 					if((function() { return !this; }())) {
-						throw Error(self.TT('error.invalidSet', { key, value, type: typeof value }));
+						throw Error(T('forbiddenSet', { key, value }));
 					}
 				}
 			}
 		);
 
+
 		types.split(',').filter(type => type).forEach(type => this.load(type));
 
+
 		return this.proxy;
+	}
+}
+
+
+/**
+ * - all loaded configs are read-only and cannot be modified directly
+ * - one JSON file as a configuration unit
+ * - all configs storage in the same directory.
+ * - default config is `config.json'. classified config is `config.*.json`
+ * - `_` is the reserved slot of the default config
+ * - `$` is the reserved slot too. it used to access Poseidon Object
+ * - supports hot modification in file units
+ */
+export default class PoseidonProxy {
+	/** @type {Poseidon} */
+	$;
+
+
+
+	/**
+	 * @param {string} [dirConfig = process.cwd()] dir of configs. `process.cwd()` is default.
+	 * @param {string|Array.<ConfigTypeRaw|ConfigType>} [types = ''] types for preloading. splited by `,`. `_` is default.
+	 */
+	constructor(dirConfig = process.cwd(), types = '') {
+		return new Poseidon(dirConfig, types);
 	}
 }

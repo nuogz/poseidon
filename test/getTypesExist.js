@@ -20,6 +20,7 @@ AS.deepEqual(result, [
 	'null',
 	'number',
 	'object',
+	'path',
 	'string',
 ]);
 
