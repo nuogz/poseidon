@@ -1,7 +1,13 @@
 # CHANGELOG
 
+## v8.1.0 - 2023.12.07 11
+* tweak enviroment
+* bump up dependencies
+
+
 ## v8.0.1 - 2023.05.09 19
 * fix `package.json`
+
 
 ## v8.0.0 - 2023.05.08 18
 * bump up `@nuogz/i18n` to `v3.x` and renew related code

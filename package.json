@@ -1,15 +1,19 @@
 {
 	"name": "@nuogz/poseidon",
-	"version": "8.0.1",
-	"description": "type-based config library",
-	"author": "Nuogz",
+	"version": "8.1.0",
+	"description": "Type-based config library",
+	"author": "DanoR",
 	"license": "LGPL-3.0-or-later",
 	"repository": {
 		"type": "git",
 		"url": "github:nuogz/poseidon"
 	},
-	"typesSource": [],
+	"private": false,
 	"type": "module",
+	"typesSource": [
+		"node"
+	],
+	"sideEffects": false,
 	"engines": {
 		"node": ">=14.18.1"
 	},
@@ -20,15 +24,17 @@
 		"locale/**",
 		"**/*.d.ts"
 	],
+	"typings": "./index.d.ts",
 	"scripts": {
-		"emitDeclaration": "tsc ./index.js --declaration --emitDeclarationOnly --allowJs --moduleResolution nodenext --module esnext --target esnext --experimentalDecorators"
+		"emitDeclaration": "tsc ./index.js --declaration --emitDeclarationOnly --moduleResolution nodenext --module nodenext --target esnext --experimentalDecorators --strict --allowJs --jsx preserve"
 	},
 	"dependencies": {
-		"@nuogz/i18n": "^3.1.0",
+		"@nuogz/i18n": "^3.3.1",
 		"escape-string-regexp": "^5.0.0",
-		"typescript": "^5.0.4"
+		"typescript": "^5.3.3"
 	},
 	"devDependencies": {
-		"eslint": "^8.40.0"
+		"@types/node": "^20.10.3",
+		"eslint": "^8.55.0"
 	}
 }

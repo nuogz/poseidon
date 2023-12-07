@@ -6,7 +6,7 @@ export class Poseidon {
      * @param {string} [dirConfig = process.cwd()] dir of configs. `process.cwd()` is default.
      * @param {string|Array.<ConfigTypeRaw|ConfigType>} [types = ''] types for preloading. splited by `,`. `_` is default.
      */
-    constructor(dirConfig?: string, types?: string | Array<ConfigTypeRaw | ConfigType>);
+    constructor(dirConfig?: string | undefined, types?: string | (string | ConfigType)[] | undefined);
     /**
      * instance
      * @type {Poseidon}
@@ -44,7 +44,7 @@ export class Poseidon {
      * @param {boolean} [willParseJSON = true] `false`，detect to parse as JSON
      * @returns {ConfigRaw|Buffer} raw JSON data or buffer
      */
-    read(type: ConfigTypeRaw | ConfigType, willParseJSON?: boolean): ConfigRaw | Buffer;
+    read(type: ConfigTypeRaw | ConfigType, willParseJSON?: boolean | undefined): ConfigRaw | Buffer;
     /**
      * load a config file. the config (recursive) will be fronzen
      * all marked file path values are converted to absolute paths
@@ -53,7 +53,7 @@ export class Poseidon {
      * @param {boolean} [isSafeLoad = false] detect throw error
      * @returns {ConfigFreezed}
      */
-    load(type: ConfigTypeRaw | ConfigType, isSafeLoad?: boolean): ConfigFreezed;
+    load(type: ConfigTypeRaw | ConfigType, isSafeLoad?: boolean | undefined): ConfigFreezed;
     /**
      * save a config to file. support backup config file before saving
      * @param {ConfigTypeRaw|ConfigType} type
@@ -62,7 +62,7 @@ export class Poseidon {
      * @param {string} [dirBackup = this.dirConfig] dir of config backup
      * @returns {Poseidon}
      */
-    save(type: ConfigTypeRaw | ConfigType, config: ConfigRaw, willBackup?: boolean, dirBackup?: string): Poseidon;
+    save(type: ConfigTypeRaw | ConfigType, config: ConfigRaw, willBackup?: boolean | undefined, dirBackup?: string | undefined): Poseidon;
     /**
      * @callback CallbackEdit
      * @param {ConfigRaw} configLoaded raw config
@@ -96,7 +96,7 @@ export default class PoseidonProxy {
      * @param {string} [dirConfig = process.cwd()] dir of configs. `process.cwd()` is default.
      * @param {string|Array.<ConfigTypeRaw|ConfigType>} [types = ''] types for preloading. splited by `,`. `_` is default.
      */
-    constructor(dirConfig?: string, types?: string | Array<ConfigTypeRaw | ConfigType>);
+    constructor(dirConfig?: string | undefined, types?: string | (string | ConfigType)[] | undefined);
     /** @type {Poseidon} */
     $: Poseidon;
 }
@@ -110,7 +110,7 @@ declare class ConfigType {
      * @param {boolean} [willParseHidden = true]
      * @returns {ConfigType}
      */
-    static parse(type: string, willParseHidden?: boolean): ConfigType;
+    static parse(type: string, willParseHidden?: boolean | undefined): ConfigType;
     /**
      * @param {string} slot
      * @param {string} symbolHidden

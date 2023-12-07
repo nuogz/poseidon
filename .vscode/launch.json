@@ -6,15 +6,13 @@
 			"request": "launch",
 			"name": "Launch Current File",
 			"console": "integratedTerminal",
-			"runtimeExecutable": "node.exe",
 			"skipFiles": [
 				"<node_internals>/**"
 			],
 			"cwd": "${fileDirname}",
+			"runtimeExecutable": "node",
 			"program": "${fileBasename}",
-			"args": [
-				"${workspaceRoot}"
-			]
+			"args": []
 		}
 	]
 }
