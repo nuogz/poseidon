@@ -9,7 +9,8 @@
 		"jsx": "preserve"
 	},
 	"include": [
-		"**/*.js"
+		"**/*.js",
+		"**/*.d.ts",
 	],
 	"exclude": [
 		"node_modules",

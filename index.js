@@ -136,13 +136,13 @@ class ConfigType {
 
 
 
-export class Poseidon {
+export class PoseidonProto {
 	static ConfigType = ConfigType;
 
 
 	/**
 	 * instance
-	 * @type {Poseidon}
+	 * @type {PoseidonProto}
 	 */
 	$ = this;
 
@@ -174,7 +174,7 @@ export class Poseidon {
 
 
 
-	/** @type {PoseidonProxy} */
+	/** @type {Poseidon} */
 	proxy;
 
 
@@ -238,7 +238,7 @@ export class Poseidon {
 	 * @param {ConfigRaw} config the config which data type supported by 'fs.writeFile'
 	 * @param {boolean} [willBackup = false] `false`，detect backup
 	 * @param {string} [dirBackup = this.dirConfig] dir of config backup
-	 * @returns {Poseidon}
+	 * @returns {PoseidonProto}
 	 */
 	save(type, config, willBackup = false, dirBackup = this.dirConfig) {
 		const { slot, symbolHidden, isDefault } = ConfigType.parse(type, true);
@@ -273,13 +273,13 @@ export class Poseidon {
 	 * @callback CallbackEdit
 	 * @param {ConfigRaw} configLoaded raw config
 	 * @param {ConfigType} typeConfig
-	 * @param {Poseidon} self
+	 * @param {PoseidonProto} self
 	 * @returns {ConfigRaw}
 	 */
 	/** modify, save and reaload a config
 	 * @param {ConfigTypeRaw|ConfigType} type
 	 * @param {CallbackEdit} callbackEdit support Promise
-	 * @returns {Poseidon}
+	 * @returns {PoseidonProto}
 	 */
 	edit(type, callbackEdit) {
 		const config = this.read(type);
@@ -392,8 +392,8 @@ export class Poseidon {
  * - `$` is the reserved slot too. it used to access Poseidon Object
  * - supports hot modification in file units
  */
-export default class PoseidonProxy {
-	/** @type {Poseidon} */
+export class Poseidon {
+	/** @type {PoseidonProto} */
 	$;
 
 
@@ -403,6 +403,6 @@ export default class PoseidonProxy {
 	 * @param {string|Array.<ConfigTypeRaw|ConfigType>} [types = ''] types for preloading. splited by `,`. `_` is default.
 	 */
 	constructor(dirConfig = process.cwd(), types = '') {
-		return new Poseidon(dirConfig, types);
+		return new PoseidonProto(dirConfig, types);
 	}
 }

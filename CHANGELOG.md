@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## v8.2.0 - 2024.03.06 01
+* (break) manually refactor `index.d.ts`, for export extendable `PoseidonInterface`
+* (break) change export content!
+  * `Poseidon` no longer export as default
+  * export extendable interface `PoseidonInterface` now
+
+
 ## v8.1.0 - 2023.12.07 11
 * tweak enviroment
 * bump up dependencies

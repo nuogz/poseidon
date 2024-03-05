@@ -1,6 +1,6 @@
 {
 	"name": "@nuogz/poseidon",
-	"version": "8.1.0",
+	"version": "8.2.0",
 	"description": "Type-based config library",
 	"author": "DanoR",
 	"license": "LGPL-3.0-or-later",
@@ -34,7 +34,7 @@
 		"typescript": "^5.3.3"
 	},
 	"devDependencies": {
-		"@types/node": "^20.10.3",
-		"eslint": "^8.55.0"
+		"@types/node": "^20.11.24",
+		"eslint": "^8.57.0"
 	}
 }
